@@ -1,38 +1,48 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-# More info on Python, GitHub Actions, and Azure App Service: https://aka.ms/python-webapps-actions
-
+# Nome do workflow para identificacao no painel do github actions
 name: Build and deploy Python app to Azure Web App - app-gabriel-engsoft
 
+# Define os eventos que disparam a execucao automática do pipeline
 on:
+  # Dispara o processo quando ocorre um envio de codigo para a branch main
   push:
     branches:
       - main
+  # Permite que o usuario execute o pipeline manualmente pelo site do github
   workflow_dispatch:
 
+# Lista de tarefas que serao executadas pelo pipeline
 jobs:
+  # Primeira tarefa responsavel pela preparacao do pacote de codigo
   build:
+    # Sistema operacional da maquina virtual fornecida pelo github
     runs-on: ubuntu-latest
+    # Define as permissoes de leitura para que o bot acesse os arquivos
     permissions:
-      contents: read #This is required for actions/checkout
+      contents: read
 
+    # Sequencia de comandos executados dentro da tarefa de build
     steps:
+      # "Step" DO EXERCICIO 3
+      - name: Mensagem de log inicial
+        run: echo "Iniciando o deploy do meu projeto!"
+
+      # Baixa uma copia do seu repositorio para dentro da maquina virtual
       - uses: actions/checkout@v4
 
+      # Instala e configura a versao especifica do interpretador python
       - name: Set up Python version
         uses: actions/setup-python@v5
         with:
           python-version: '3.14'
 
-      # 🛠️ Local Build Section (Optional)
-      # The following section in your workflow is designed to catch build issues early on the client side, before deployment. This can be helpful for debugging and validation. However, if this step significantly increases deployment time and early detection is not critical for your workflow, you may remove this section to streamline the deployment process.
+      # Cria um ambiente virtual e instala as bibliotecas do requirements txt
       - name: Create and Start virtual environment and Install dependencies
         run: |
           python -m venv antenv
           source antenv/bin/activate
           pip install -r requirements.txt
                 
-      # By default, when you enable GitHub CI/CD integration through the Azure portal, the platform automatically sets the SCM_DO_BUILD_DURING_DEPLOYMENT application setting to true. This triggers the use of Oryx, a build engine that handles application compilation and dependency installation (e.g., pip install) directly on the platform during deployment. Hence, we exclude the antenv virtual environment directory from the deployment artifact to reduce the payload size. 
+      # Salva o codigo preparado como um artefato para ser usado no próximo job
       - name: Upload artifact for deployment jobs
         uses: actions/upload-artifact@v4
         with:
@@ -41,25 +51,26 @@ jobs:
             .
             !antenv/
 
-      # 🚫 Opting Out of Oryx Build
-      # If you prefer to disable the Oryx build process during deployment, follow these steps:
-      # 1. Remove the SCM_DO_BUILD_DURING_DEPLOYMENT app setting from your Azure App Service Environment variables.
-      # 2. Refer to sample workflows for alternative deployment strategies: https://github.com/Azure/actions-workflow-samples/tree/master/AppService
-      
-
+  # Segunda tarefa responsavel por enviar o codigo para o servidor da azure
   deploy:
+    # Define o sistema operacional para a fase de publicacao
     runs-on: ubuntu-latest
+    # Indica que esta tarefa so comeca se a tarefa de build terminar com sucesso
     needs: build
+    # Permissoes necessarias para autenticacao segura via tokens e leitura de arquivos
     permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
+      id-token: write
+      contents: read
 
+    # Sequencia de comandos executados dentro da tarefa de deploy
     steps:
+      # Recupera os arquivos que foram compactados e salvos na etapa anterior
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
           name: python-app
       
+      # Realiza a autenticacao na nuvem da microsoft usando segredos configurados
       - name: Login to Azure
         uses: azure/login@v2
         with:
@@ -67,10 +78,12 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_CEAD4F1EEF3F41F4A6FD583F16B15154 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_9AE000264750465689CEBDF185FBC18C }}
 
+      # Comando final que realiza a publicacao do codigo no servico de aplicativo
       - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         id: deploy-to-webapp
         with:
+          # Nome do recurso de destino criado no portal da azure
           app-name: 'app-gabriel-engsoft'
+          # Define o slot de destino como producao
           slot-name: 'Production'
-          
